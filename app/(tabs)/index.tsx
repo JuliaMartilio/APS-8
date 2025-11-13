@@ -1,98 +1,221 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { OPENWEATHER_API_KEY } from "../../config/api";
+import { buscarClimaAtual } from "../../services/weatherApi";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function WeatherScreen() {
+  const params = useLocalSearchParams<{ cidade?: string }>();
+  const cidadeParam = params?.cidade;
 
-export default function HomeScreen() {
+  const [cidade, setCidade] = useState("São Paulo");
+  const [clima, setClima] = useState<any>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
+
+  useEffect(() => {
+    if (cidadeParam) {
+      setCidade(cidadeParam);
+      buscarDadosClima(cidadeParam);
+    } else {
+      buscarDadosClima(cidade);
+    }
+  }, [cidadeParam]);
+
+  const buscarDadosClima = async (nomeCidade: string) => {
+    try {
+      setCarregando(true);
+      setErro(null);
+
+      if (!nomeCidade) return;
+
+      const dados = await buscarClimaAtual(nomeCidade, OPENWEATHER_API_KEY);
+      setClima(dados);
+      setCidade(nomeCidade);
+    } catch (error: any) {
+      console.log("Erro ao buscar clima:", error);
+      setErro(error.message);
+      Alert.alert("Erro", "Cidade não encontrada");
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const salvarFavorito = async () => {
+    try {
+      const data = await AsyncStorage.getItem("favoritos");
+      const favoritosAtuais: string[] = data ? JSON.parse(data) : [];
+
+      if (!favoritosAtuais.includes(cidade)) {
+        favoritosAtuais.push(cidade);
+        await AsyncStorage.setItem("favoritos", JSON.stringify(favoritosAtuais));
+        Alert.alert("✅ Sucesso", `${cidade} foi adicionada aos favoritos`);
+      } else {
+        Alert.alert("ℹ️", "Essa cidade já está nos favoritos");
+      }
+    } catch (error) {
+      console.log("Erro ao salvar favorito:", error);
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Previsão do Tempo</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Barra de pesquisa */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          placeholder="Buscar cidade..."
+          style={styles.input}
+          value={busca}
+          onChangeText={setBusca}
+        />
+        <TouchableOpacity
+          style={styles.searchButton}
+          onPress={() => buscarDadosClima(busca)}
+        >
+          <Text style={styles.searchText}>Buscar</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Card de clima */}
+      <View style={styles.card}>
+        {carregando ? (
+          <>
+            <ActivityIndicator size="large" />
+            <Text style={styles.carregando}>Carregando...</Text>
+          </>
+        ) : erro || !clima ? (
+          <>
+            <Text style={styles.erro}>Erro ao carregar dados</Text>
+            <TouchableOpacity onPress={() => buscarDadosClima(cidade)}>
+              <Text style={styles.instrucao}>Tentar novamente</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.temp}>{clima.temperatura}°C</Text>
+            <Text style={styles.city}>
+              {clima.cidade}, {clima.pais}
+            </Text>
+            <Text style={styles.desc}>{clima.descricao}</Text>
+
+            <View style={styles.infoAdicional}>
+              <Text style={styles.info}>
+                Máx: {clima.tempMax}°C | Mín: {clima.tempMin}°C
+              </Text>
+              <Text style={styles.info}>Umidade: {clima.umidade}%</Text>
+              <Text style={styles.info}>Vento: {clima.vento} m/s</Text>
+            </View>
+
+            <TouchableOpacity style={styles.favoriteBtn} onPress={salvarFavorito}>
+              <Text style={styles.favoriteText}>⭐ Favoritar</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#87CEEB",
+    alignItems: "center",
+    paddingTop: 50,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 15,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  searchContainer: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 20,
+  },
+  input: {
+    backgroundColor: "#fff",
+    padding: 10,
+    width: 200,
+    borderRadius: 10,
+  },
+  searchButton: {
+    backgroundColor: "#005f87",
+    padding: 10,
+    borderRadius: 10,
+  },
+  searchText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  card: {
+    backgroundColor: "rgba(255,255,255,0.85)",
+    padding: 30,
+    borderRadius: 20,
+    alignItems: "center",
+    width: 300,
+  },
+  temp: {
+    fontSize: 48,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  city: {
+    fontSize: 20,
+    marginTop: 10,
+    color: "#555",
+  },
+  desc: {
+    fontSize: 18,
+    color: "#666",
+    marginTop: 5,
+    textTransform: "capitalize",
+  },
+  infoAdicional: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+  info: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  carregando: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
+  },
+  erro: {
+    color: "red",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  instrucao: {
+    textDecorationLine: "underline",
+    color: "#005f87",
+    marginTop: 10,
+  },
+  favoriteBtn: {
+    marginTop: 20,
+    backgroundColor: "#FFD700",
+    padding: 10,
+    borderRadius: 10,
+  },
+  favoriteText: {
+    fontWeight: "bold",
   },
 });
