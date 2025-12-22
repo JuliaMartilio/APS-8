@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { OPENWEATHER_API_KEY } from "../../config/api";
 import { buscarClimaAtual } from "../../services/weatherApi";
 
 export default function WeatherScreen() {
@@ -40,7 +39,7 @@ export default function WeatherScreen() {
 
       if (!nomeCidade) return;
 
-      const dados = await buscarClimaAtual(nomeCidade, OPENWEATHER_API_KEY);
+      const dados = await buscarClimaAtual(nomeCidade);
       setClima(dados);
       setCidade(nomeCidade);
     } catch (error: any) {

@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: clima-backend
+    ports:
+      - "3000:3000"
+    environment:
+      OPENWEATHER_API_KEY: 8632fe059deb18b1d5a03f0d2da905e9
+    restart: unless-stopped

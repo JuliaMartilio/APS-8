@@ -1,15 +1,14 @@
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { OPENWEATHER_API_KEY } from "../../config/api";
 import { buscarPrevisao5Dias } from "../../services/weatherApi";
 import { gerarRelatorioPDF } from "../../utils/gerarRelatorioPDF";
 
@@ -25,7 +24,7 @@ export default function RelatorioScreen() {
 
     setCarregando(true);
     try {
-      const previsao = await buscarPrevisao5Dias(cidade, OPENWEATHER_API_KEY);
+      const previsao = await buscarPrevisao5Dias(cidade);
       await gerarRelatorioPDF(cidade, previsao);
       Alert.alert("Sucesso", `Relatório de ${cidade} gerado com sucesso!`);
     } catch (erro) {
