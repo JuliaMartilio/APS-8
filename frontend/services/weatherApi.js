@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://192.168.15.185:3000/api";
+const API_BASE_URL = "http://192.168.0.109:3000/api";
 
 export async function buscarClimaAtual(cidade) {
   const response = await fetch(
